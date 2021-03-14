@@ -4,8 +4,16 @@ cradle:
       config:
         cradle:
           none:
+    - path: ./.stack-work
+      config:
+        cradle:
+          none:
     - path: ./
       config:
         cradle:
           stack:
-            stackYaml: stack.yaml
+            components:
+              - path: ./src
+                component: capability-graphs:lib
+              - path: ./test
+                component: capability-graphs:capability-graphs-test

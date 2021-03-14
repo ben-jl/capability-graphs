@@ -4,15 +4,13 @@ module Data.CapabilityGraph
 where
 
 import Data.CapabilityGraph.Types
-  ( CGraph,
-    DirectedGraph,
-    GNode,
+  ( DirectedGraph,
+    Graph,
+    KeyedByInt,
     UndirectedGraph,
     empty,
     emptyDGraph,
     emptyUGraph,
-    insert,
-    isElement,
-    nodesByValue,
     order,
+    wrap,
   )

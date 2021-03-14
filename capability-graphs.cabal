@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2bdaf19942923e08fdf801a7251b4a6b0383acbf3da762116f734e14aa5c165e
+-- hash: 1b2d6f84035b5c8bc3474edcc2c1ec0d039b15ec9b238faccf422d80c9bd1633
 
 name:           capability-graphs
 version:        0.0.0.1
@@ -30,9 +30,9 @@ library
       Data.CapabilityGraph
   other-modules:
       Data.CapabilityGraph.Types
-      Paths_capability_graphs
   hs-source-dirs:
       src
+      src/Data
   default-extensions: EmptyCase, LambdaCase, OverloadedStrings, BangPatterns, TupleSections , FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, ConstraintKinds , KindSignatures, ScopedTypeVariables, RankNTypes
   ghc-options: -Wall -Wcompat
   build-depends:

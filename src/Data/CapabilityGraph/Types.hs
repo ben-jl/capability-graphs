@@ -1,91 +1,107 @@
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+
 module Data.CapabilityGraph.Types
-  ( CGraph,
-    GNode,
+  ( Graph,
+    KeyedByInt,
     DirectedGraph,
     UndirectedGraph,
     emptyDGraph,
     emptyUGraph,
     empty,
     order,
-    isElement,
-    insert,
-    nodesByValue,
+    wrap,
   )
 where
 
-import Data.Foldable (foldl')
-import qualified Data.HashMap.Lazy as HM
+import qualified Data.Bifunctor as BF
+import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
 import qualified Data.Hashable as H
-import qualified Data.List as L (filter, nubBy)
-import Data.Maybe
 import qualified Test.QuickCheck as Q
 
--- | type wrapper to avoid boolean blindness when directed graph is required
-type DirectedGraph h v = (CapabilityGraph h v)
+data Directed = DirectedT
 
--- | type wrapper to avoid boolean blindness when undirected graph is required
-type UndirectedGraph h v = (CapabilityGraph h v)
+data Undirected = UndirectedT
 
--- | An individual node independent of any graph graph, including its key, additional attributes (if any), and its neighbors
-data Node h v = NodeT {hashKey :: h, attributes :: v, neighbors :: HM.HashMap h (Node h v)}
+type Graph v = (GraphM () v)
 
--- | a node associated with a particular graph
-data GNode h v = GNodeT (CapabilityGraph h v) (Node h v)
+type DirectedGraph v = (GraphM Directed v)
 
-instance (Show h, Show v) => Show (Node h v) where
-  show (NodeT h v n) = "NodeT " ++ show h ++ " " ++ show v ++ " " ++ show n
+type UndirectedGraph v = (GraphM Undirected v)
 
-type CGraph v = CapabilityGraph Int v
+data Node v = NodeT {key :: Int, unNode :: v}
+
+instance Functor Node where
+  f `fmap` n = NodeT {key = key n, unNode = f (unNode n)}
+
+instance (Show v) => Show (Node v) where
+  show (NodeT h v) = "NodeT { " ++ show h ++ " " ++ show v ++ " }"
 
 -- | The type of a capability graph
-newtype CapabilityGraph h v = CapabilityGraphT
+newtype GraphM a v = GraphMT
   { -- | returns the underlying data structure we're using.
     -- | Should never be used directly by non-library code
-    unHashMap :: HM.HashMap h (Node h v)
+    unHashMap :: HM.HashMap Int (v, HS.HashSet Int)
   }
 
-instance (Show h, Show v) => Show (CapabilityGraph h v) where
-  show g = "CapabilityGraphT { " ++ show (unHashMap g) ++ "}"
+instance Functor (GraphM a) where
+  f `fmap` g = GraphMT (HM.map (BF.first f) (unHashMap g))
+
+class KeyedByInt a where
+  keyedByInt :: a -> Int
+
+instance KeyedByInt (Node v) where
+  keyedByInt = key
+
+instance KeyedByInt Int where
+  keyedByInt = id
+
+instance (Show h, Show v, KeyedByInt v) => Show (GraphM h v) where
+  show g = "GraphT { " ++ show (unHashMap g) ++ " }"
 
 -- | The empty graph
-empty :: (Eq h, H.Hashable h) => CapabilityGraph h v
-empty = CapabilityGraphT {unHashMap = HM.empty}
+empty :: KeyedByInt v => Graph v
+empty = GraphMT HM.empty :: GraphM () v
 
-emptyDGraph :: (Eq h, H.Hashable h) => DirectedGraph h v
-emptyDGraph = empty
+emptyDGraph :: KeyedByInt v => DirectedGraph v
+emptyDGraph = GraphMT HM.empty :: GraphM Directed v
 
-emptyUGraph :: (Eq h, H.Hashable h) => UndirectedGraph h v
-emptyUGraph = empty
+emptyUGraph :: KeyedByInt v => UndirectedGraph v
+emptyUGraph = GraphMT HM.empty :: GraphM Undirected v
 
-nodesByValue :: Eq v => CapabilityGraph h v -> v -> [GNode h v]
-nodesByValue g v =
-  map (GNodeT g) (L.filter (\n -> attributes n == v) (HM.elems (unHashMap g)))
+wrap :: KeyedByInt v => GraphM a v -> v -> Node v
+wrap g v = NodeT {key = maximum (HM.keys (unHashMap g)) + 1, unNode = v}
 
 -- | Returns true if a node is an element in the graph
-isElement :: (Eq h, H.Hashable h) => CapabilityGraph h v -> GNode h v -> Bool
-isElement g (GNodeT _ n) = isJust (HM.lookup (hashKey n) (unHashMap g))
+-- isElement :: (Eq h, H.Hashable h) => Graph h v -> GNode h v -> Bool
+-- isElement g (GNodeT _ n) = isJust (HM.lookup (hashKey n) (unHashMap g))
 
 -- | Determines the total number of elements in a graph
-order :: (Eq h, H.Hashable h) => CapabilityGraph h v -> Int
+order :: KeyedByInt v => GraphM a v -> Int
 order = HM.size . unHashMap
 
 -- | Insert an element into a graph (keeping the old value if present)
-insert :: (Eq h, H.Hashable h, Ord h, Num h) => CapabilityGraph h v -> v -> (GNode h v, CapabilityGraph h v)
-insert g v =
-  let nextId = HM.foldl' (\x y -> maximum [x, hashKey y]) 0 (unHashMap g)
-      cgraph = CapabilityGraphT (HM.union (HM.singleton nextId (NodeT nextId v HM.empty)) (unHashMap g))
-   in (GNodeT cgraph (NodeT nextId v (maybe HM.empty neighbors (HM.lookup nextId (unHashMap cgraph)))), cgraph)
-
-instance (Q.Arbitrary h, Q.Arbitrary v, H.Hashable h, Eq h) => Q.Arbitrary (Node h v) where
+-- insert :: (Eq h, H.Hashable h, Ord h, Num h) => Graph h v -> v -> (GNode h v, Graph h v)
+-- insert g v =
+--   let nextId = HM.foldl' (\x y -> maximum [x, hashKey y]) 0 (unHashMap g)
+--       cgraph = GraphT (HM.union (HM.singleton nextId (NodeT nextId v HM.empty)) (unHashMap g))
+--    in (GNodeT cgraph (NodeT nextId v (maybe HM.empty neighbors (HM.lookup nextId (unHashMap cgraph)))), cgraph)
+instance (Q.Arbitrary v) => Q.Arbitrary (Node v) where
   arbitrary = do
-    initNode <- NodeT <$> (Q.arbitrary :: Q.Gen h) <*> (Q.arbitrary :: Q.Gen v) <*> return HM.empty
-    hashes <- Q.listOf (Q.arbitrary :: Q.Gen h) `Q.suchThat` \x -> length x <= 10
-    nodes <- Q.vectorOf (length hashes) (Q.arbitrary :: Q.Gen v)
-    let parents = mconcat [HM.singleton h (NodeT h n HM.empty) | h <- hashes, n <- nodes]
-    return (NodeT (hashKey initNode) (attributes initNode) parents)
+    int <- H.hash <$> Q.vectorOf 10 (Q.arbitrary :: Q.Gen Char)
+    val <- Q.arbitrary :: Q.Gen v
+    return (NodeT int val)
 
-instance (Q.Arbitrary h, Q.Arbitrary v, H.Hashable h, Eq h) => Q.Arbitrary (CapabilityGraph h v) where
-  arbitrary = do
-    allNodes <- Q.listOf (Q.arbitrary :: Q.Gen (Node h v)) `Q.suchThat` \x -> length x <= 10
-    let nubbedNodes = L.nubBy (\a b -> hashKey a == hashKey b) (concat [an : HM.elems (neighbors an) | an <- allNodes])
-    return (CapabilityGraphT (foldl' (\c nxt -> HM.union c (HM.singleton (hashKey nxt) nxt)) HM.empty nubbedNodes))
+-- instance (Q.Arbitrary h, Q.Arbitrary v, H.Hashable h, Eq h) => Q.Arbitrary (Graph h v) where
+--   arbitrary = do
+--     allNodes <- Q.listOf (Q.arbitrary :: Q.Gen (Node h v)) `Q.suchThat` \x -> length x <= 10
+--     let nubbedNodes = L.nubBy (\a b -> hashKey a == hashKey b) (concat [an : HM.elems (neighbors an) | an <- allNodes])
+--     return (GraphT (foldl' (\c nxt -> HM.union c (HM.singleton (hashKey nxt) nxt)) HM.empty nubbedNodes))
+
+-- fromDistinctValues :: Eq v => [(v, v)] -> CGraph v
+-- fromDistinctValues ls =
+--   let hmall = HM.fromList (zip [0 :: Int ..] (nubBy (\a b -> fst a == fst b) ([l | l <- ls] `union` [(vs, []) | vs <- concatMap snd ls])))
+--    in --baseHm = HM.mapWithKey (\n v1 -> NodeT n v1 HM.empty) hmneighbors
+--       -- fromDistinctValues' acc [] = acc
+--       -- fromDistinctValues' acc (c : cs) = fromDistinctValues' (HM.update () HashMap k a)
+--       GraphT (HM.mapWithKey (\k1 v1 -> NodeT k1 (fst v1) (HM.singleton k (fst v1))) hmall)

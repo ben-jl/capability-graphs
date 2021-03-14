@@ -28,8 +28,11 @@ default-extensions:
     , KindSignatures, ScopedTypeVariables, RankNTypes 
 
 library:
-  source-dirs: src
+  source-dirs:
+    - src
+    - src/Data
   exposed-modules: Data.CapabilityGraph
+  other-modules: Data.CapabilityGraph.Types
   ghc-options:
     - -Wall
     - -Wcompat
