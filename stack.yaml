@@ -1,0 +1,10 @@
+resolver: lts-17.5
+
+packages:
+- .
+
+system-ghc: false
+
+ghc-options:
+  $everything: -haddock -j
+  $locals: -fhpc

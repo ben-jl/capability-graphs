@@ -1,0 +1,29 @@
+{
+    "editor.fontFamily": "Iosevka, 'Iosevka Term', monospace",
+    "editor.fontLigatures": true,
+    "editor.fontSize": 14,
+    "editor.fontWeight": "normal",
+    "files.insertFinalNewline": true,
+    "haskell.completionSnippetsOn": true,
+    "haskell.diagnosticsOnChange": true,
+    "haskell.formatOnImportOn": true,
+    "haskell.formattingProvider": "ormolu",
+    "haskell.hlintOn": true,
+    "haskell.indentationRules.enabled": true,
+    "haskell.languageServerVariant": "haskell-language-server",
+    "haskell.serverExecutablePath": "haskell-language-server-8.10.4",
+    "[haskell]": {
+        "diffEditor.codeLens": true,
+        "editor.acceptSuggestionOnEnter": "off",
+        "editor.codeLens": true,
+        "editor.colorDecorators": true,
+        "editor.folding": false,
+        "editor.semanticHighlighting.enabled": true
+    },
+    "terminal.explorerKind": "external",
+    "terminal.integrated.shell.linux": "/bin/bash",
+    "git.decorations.enabled": true,
+    "telemetry.enableTelemetry": false,
+    "telemetry.enableCrashReporter": false,
+    "editor.formatOnSave": true
+}

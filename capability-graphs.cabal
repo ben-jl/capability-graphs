@@ -1,0 +1,67 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 2bdaf19942923e08fdf801a7251b4a6b0383acbf3da762116f734e14aa5c165e
+
+name:           capability-graphs
+version:        0.0.0.1
+description:    Please see the README on GitHub at <https://github.com/ben-jl/capability-graphs#readme>
+homepage:       https://github.com/https://github.com/ben-jl/capability-graphs#readme
+bug-reports:    https://github.com/https://github.com/ben-jl/capability-graphs/issues
+author:         Ben LeValley
+maintainer:     ben.levalley@gmail.com
+copyright:      Ben LeValley 2021
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/https://github.com/ben-jl/capability-graphs
+
+library
+  exposed-modules:
+      Data.CapabilityGraph
+  other-modules:
+      Data.CapabilityGraph.Types
+      Paths_capability_graphs
+  hs-source-dirs:
+      src
+  default-extensions: EmptyCase, LambdaCase, OverloadedStrings, BangPatterns, TupleSections , FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, ConstraintKinds , KindSignatures, ScopedTypeVariables, RankNTypes
+  ghc-options: -Wall -Wcompat
+  build-depends:
+      QuickCheck >=2.14.2 && <2.15
+    , base >=4.7 && <5
+    , hashable >=1.3.0.0 && <1.4
+    , hspec >=2.7.4 && <2.8
+    , quickcheck-instances >=0.3.25 && <0.4
+    , text
+    , unordered-containers >=0.2.10.0 && <0.3
+  default-language: Haskell2010
+
+test-suite capability-graphs-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Test.GraphTests
+  hs-source-dirs:
+      test
+      test/Test
+  default-extensions: EmptyCase, LambdaCase, OverloadedStrings, BangPatterns, TupleSections , FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, ConstraintKinds , KindSignatures, ScopedTypeVariables, RankNTypes
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      QuickCheck >=2.14.2 && <2.15
+    , base >=4.7 && <5
+    , capability-graphs
+    , hashable >=1.3.0.0 && <1.4
+    , hspec >=2.7.4 && <2.8
+    , quickcheck-instances >=0.3.25 && <0.4
+    , text
+    , unordered-containers >=0.2.10.0 && <0.3
+  default-language: Haskell2010
