@@ -17,105 +17,60 @@ span.spaces    { background: white }
 <span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
 </pre>
 <pre>
-<span class="lineno">    1 </span>{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-<span class="lineno">    2 </span>
-<span class="lineno">    3 </span>module Data.CapabilityGraph.Types
-<span class="lineno">    4 </span>  ( Graph,
-<span class="lineno">    5 </span>    DirectedGraph,
-<span class="lineno">    6 </span>    UndirectedGraph,
-<span class="lineno">    7 </span>    Node,
-<span class="lineno">    8 </span>    emptyDGraph,
-<span class="lineno">    9 </span>    emptyUGraph,
-<span class="lineno">   10 </span>    empty,
-<span class="lineno">   11 </span>    order,
-<span class="lineno">   12 </span>    isElement,
-<span class="lineno">   13 </span>    upsert,
-<span class="lineno">   14 </span>    nodes,
-<span class="lineno">   15 </span>  )
-<span class="lineno">   16 </span>where
-<span class="lineno">   17 </span>
-<span class="lineno">   18 </span>import qualified Data.HashMap.Strict as HM
-<span class="lineno">   19 </span>import qualified Data.HashSet as HS
-<span class="lineno">   20 </span>import qualified Data.Hashable as H
-<span class="lineno">   21 </span>import Data.Maybe (fromMaybe)
-<span class="lineno">   22 </span>import qualified Test.QuickCheck as Q
-<span class="lineno">   23 </span>
-<span class="lineno">   24 </span>data Directed = DirectedT
+<span class="lineno">    1 </span>module Data.CapabilityGraph.Types
+<span class="lineno">    2 </span>  ( Graph,
+<span class="lineno">    3 </span>    Node,
+<span class="lineno">    4 </span>    empty,
+<span class="lineno">    5 </span>    order,
+<span class="lineno">    6 </span>    isElement,
+<span class="lineno">    7 </span>    upsert,
+<span class="lineno">    8 </span>  )
+<span class="lineno">    9 </span>where
+<span class="lineno">   10 </span>
+<span class="lineno">   11 </span>import qualified Data.HashMap.Strict as HM
+<span class="lineno">   12 </span>import qualified Data.HashSet as HS
+<span class="lineno">   13 </span>import qualified Data.Hashable as H
+<span class="lineno">   14 </span>import qualified Test.QuickCheck as Q
+<span class="lineno">   15 </span>
+<span class="lineno">   16 </span>--  (HM.HashMap h (Node v, HS.HashSet h))
+<span class="lineno">   17 </span>newtype Graph v = GraphT
+<span class="lineno">   18 </span>  { <span class="istickedoff"><span class="decl"><span class="istickedoff">unHashMap</span></span></span> :: HM.HashMap Int (Node v, HS.HashSet Int)
+<span class="lineno">   19 </span>  }
+<span class="lineno">   20 </span>
+<span class="lineno">   21 </span>data Node v = NodeT {<span class="istickedoff"><span class="decl"><span class="istickedoff">key</span></span></span> :: Int, <span class="nottickedoff"><span class="decl"><span class="nottickedoff">unNode</span></span></span> :: v}
+<span class="lineno">   22 </span>
+<span class="lineno">   23 </span>instance Functor Node where
+<span class="lineno">   24 </span>  <span class="decl"><span class="nottickedoff">f `fmap` n = NodeT {key = key n, unNode = f (unNode n)}</span></span>
 <span class="lineno">   25 </span>
-<span class="lineno">   26 </span>data Undirected = UndirectedT
-<span class="lineno">   27 </span>
-<span class="lineno">   28 </span>type Graph v = (GraphM () v)
-<span class="lineno">   29 </span>
-<span class="lineno">   30 </span>type DirectedGraph v = (GraphM Directed v)
+<span class="lineno">   26 </span>instance (Show v) =&gt; Show (Node v) where
+<span class="lineno">   27 </span>  <span class="decl"><span class="nottickedoff">show (NodeT h v) = &quot;NodeT { &quot; ++ show h ++ &quot; &quot; ++ show v ++ &quot; }&quot;</span></span>
+<span class="lineno">   28 </span>
+<span class="lineno">   29 </span>instance (Show v) =&gt; Show (Graph v) where
+<span class="lineno">   30 </span>  <span class="decl"><span class="nottickedoff">show g = &quot;GraphT Directed { unHashMap = &quot; ++ show (unHashMap g) ++ &quot; }&quot;</span></span>
 <span class="lineno">   31 </span>
-<span class="lineno">   32 </span>type UndirectedGraph v = (GraphM Undirected v)
-<span class="lineno">   33 </span>
-<span class="lineno">   34 </span>data Node v = NodeT {<span class="istickedoff"><span class="decl"><span class="istickedoff">key</span></span></span> :: Int, <span class="nottickedoff"><span class="decl"><span class="nottickedoff">unNode</span></span></span> :: v}
+<span class="lineno">   32 </span>-- | The empty graph
+<span class="lineno">   33 </span>empty :: Graph v
+<span class="lineno">   34 </span><span class="decl"><span class="istickedoff">empty = GraphT HM.empty</span></span>
 <span class="lineno">   35 </span>
-<span class="lineno">   36 </span>instance Functor Node where
-<span class="lineno">   37 </span>  <span class="decl"><span class="nottickedoff">f `fmap` n = NodeT {key = key n, unNode = f (unNode n)}</span></span>
-<span class="lineno">   38 </span>
-<span class="lineno">   39 </span>instance (Show v) =&gt; Show (Node v) where
-<span class="lineno">   40 </span>  <span class="decl"><span class="nottickedoff">show (NodeT h v) = &quot;NodeT { &quot; ++ show h ++ &quot; &quot; ++ show v ++ &quot; }&quot;</span></span>
-<span class="lineno">   41 </span>
-<span class="lineno">   42 </span>-- | The type of a capability graph
-<span class="lineno">   43 </span>newtype GraphM a v = GraphMT
-<span class="lineno">   44 </span>  { -- | returns the underlying data structure we're using.
-<span class="lineno">   45 </span>    -- | Should never be used directly by non-library code
-<span class="lineno">   46 </span>    <span class="istickedoff"><span class="decl"><span class="istickedoff">unHashMap</span></span></span> :: HM.HashMap Int (Node v, HS.HashSet Int)
-<span class="lineno">   47 </span>  }
-<span class="lineno">   48 </span>
-<span class="lineno">   49 </span>instance Functor (GraphM a) where
-<span class="lineno">   50 </span>  <span class="decl"><span class="nottickedoff">f `fmap` g = GraphMT (HM.map (\(NodeT k v, hs) -&gt; (NodeT k (f v), hs)) (unHashMap g))</span></span>
-<span class="lineno">   51 </span>
-<span class="lineno">   52 </span>instance (Show h, Show v) =&gt; Show (GraphM h v) where
-<span class="lineno">   53 </span>  <span class="decl"><span class="nottickedoff">show g = &quot;GraphT { &quot; ++ show (unHashMap g) ++ &quot; }&quot;</span></span>
-<span class="lineno">   54 </span>
-<span class="lineno">   55 </span>-- | The empty graph
-<span class="lineno">   56 </span>empty :: Graph v
-<span class="lineno">   57 </span><span class="decl"><span class="istickedoff">empty = GraphMT HM.empty :: GraphM () v</span></span>
-<span class="lineno">   58 </span>
-<span class="lineno">   59 </span>emptyDGraph :: DirectedGraph v
-<span class="lineno">   60 </span><span class="decl"><span class="istickedoff">emptyDGraph = GraphMT HM.empty :: GraphM Directed v</span></span>
-<span class="lineno">   61 </span>
-<span class="lineno">   62 </span>emptyUGraph :: UndirectedGraph v
-<span class="lineno">   63 </span><span class="decl"><span class="istickedoff">emptyUGraph = GraphMT HM.empty :: GraphM Undirected v</span></span>
-<span class="lineno">   64 </span>
-<span class="lineno">   65 </span>wrap :: GraphM a v -&gt; v -&gt; Node v
-<span class="lineno">   66 </span><span class="decl"><span class="nottickedoff">wrap g v = NodeT {key = maximum (HM.keys (unHashMap g)) + 1, unNode = v}</span>
-<span class="lineno">   67 </span><span class="spaces"></span><span class="nottickedoff"></span>
-<span class="lineno">   68 </span><span class="spaces"></span><span class="nottickedoff">-- | Returns true if a node is an element of a given graph</span></span>
-<span class="lineno">   69 </span>isElement :: GraphM a v -&gt; Node v -&gt; Bool
-<span class="lineno">   70 </span><span class="decl"><span class="istickedoff">isElement g n = HM.member (key n) (unHashMap g)</span>
-<span class="lineno">   71 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">   72 </span><span class="spaces"></span><span class="istickedoff">-- | Given a graph and node, update node if already present, otherwise insert, leaving relationships unchanged</span></span>
-<span class="lineno">   73 </span>upsert :: GraphM a v -&gt; Node v -&gt; GraphM a v
-<span class="lineno">   74 </span><span class="decl"><span class="istickedoff">upsert g n =</span>
-<span class="lineno">   75 </span><span class="spaces">  </span><span class="istickedoff">let <span class="nottickedoff">currhs = maybe HS.empty snd (HM.lookup (key n) (unHashMap g))</span></span>
-<span class="lineno">   76 </span><span class="spaces">   </span><span class="istickedoff">in GraphMT (HM.insert (key n) (<span class="nottickedoff">n</span>, <span class="nottickedoff">currhs</span>) (unHashMap g))</span>
-<span class="lineno">   77 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">   78 </span><span class="spaces"></span><span class="istickedoff">-- | Determines the total number of elements in a graph</span></span>
-<span class="lineno">   79 </span>order :: GraphM a v -&gt; Int
-<span class="lineno">   80 </span><span class="decl"><span class="istickedoff">order = HM.size . unHashMap</span></span>
-<span class="lineno">   81 </span>
-<span class="lineno">   82 </span>-- | return a list of all nodes in the given graph
-<span class="lineno">   83 </span>nodes :: GraphM a v -&gt; [Node v]
-<span class="lineno">   84 </span><span class="decl"><span class="istickedoff">nodes g = <span class="nottickedoff">fst</span> &lt;$&gt; HM.elems (unHashMap g)</span>
-<span class="lineno">   85 </span><span class="spaces"></span><span class="istickedoff"></span>
-<span class="lineno">   86 </span><span class="spaces"></span><span class="istickedoff">-- | Returns true if a keyable object</span></span>
-<span class="lineno">   87 </span>instance (Q.Arbitrary v) =&gt; Q.Arbitrary (Node v) where
-<span class="lineno">   88 </span>  <span class="decl"><span class="istickedoff">arbitrary = do</span>
-<span class="lineno">   89 </span><span class="spaces">    </span><span class="istickedoff">int &lt;- H.hash &lt;$&gt; Q.vectorOf 10 (Q.arbitrary :: Q.Gen Char)</span>
-<span class="lineno">   90 </span><span class="spaces">    </span><span class="istickedoff">val &lt;- <span class="nottickedoff">Q.arbitrary :: Q.Gen v</span></span>
-<span class="lineno">   91 </span><span class="spaces">    </span><span class="istickedoff">return (NodeT int <span class="nottickedoff">val</span>)</span></span>
-<span class="lineno">   92 </span>
-<span class="lineno">   93 </span>instance (Q.Arbitrary v) =&gt; Q.Arbitrary (GraphM a v) where
-<span class="lineno">   94 </span>  <span class="decl"><span class="istickedoff">arbitrary = do</span>
-<span class="lineno">   95 </span><span class="spaces">    </span><span class="istickedoff">mnodes &lt;- Q.listOf (Q.arbitrary :: Q.Gen (Node v))</span>
-<span class="lineno">   96 </span><span class="spaces">    </span><span class="istickedoff">relatives &lt;- Q.vectorOf (length mnodes) <span class="nottickedoff">(Q.listOf (Q.elements mnodes))</span></span>
-<span class="lineno">   97 </span><span class="spaces">    </span><span class="istickedoff">let zipped = zip mnodes relatives</span>
-<span class="lineno">   98 </span><span class="spaces">    </span><span class="istickedoff">let res = map (\(b, ps) -&gt; HM.singleton (key b) (<span class="nottickedoff">b</span>, <span class="nottickedoff">mconcat [HS.singleton (key p) | p &lt;- ps]</span>)) zipped</span>
-<span class="lineno">   99 </span><span class="spaces">    </span><span class="istickedoff">return (GraphMT (mconcat res))</span></span>
+<span class="lineno">   36 </span>-- | Returns true if a node is an element of a given graph
+<span class="lineno">   37 </span>isElement :: Graph v -&gt; Node v -&gt; Bool
+<span class="lineno">   38 </span><span class="decl"><span class="istickedoff">isElement g n = HM.member (key n) (unHashMap g)</span>
+<span class="lineno">   39 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   40 </span><span class="spaces"></span><span class="istickedoff">-- | Given a graph and node, update node if already present, otherwise insert, leaving relationships unchanged</span></span>
+<span class="lineno">   41 </span>upsert :: Graph v -&gt; Node v -&gt; Graph v
+<span class="lineno">   42 </span><span class="decl"><span class="istickedoff">upsert g n =</span>
+<span class="lineno">   43 </span><span class="spaces">  </span><span class="istickedoff">let <span class="nottickedoff">currhs = maybe HS.empty snd (HM.lookup (key n) (unHashMap g))</span></span>
+<span class="lineno">   44 </span><span class="spaces">   </span><span class="istickedoff">in GraphT (HM.insert (key n) (<span class="nottickedoff">n</span>, <span class="nottickedoff">currhs</span>) (unHashMap g))</span>
+<span class="lineno">   45 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   46 </span><span class="spaces"></span><span class="istickedoff">-- | Determines the total number of elements in a graph</span></span>
+<span class="lineno">   47 </span>order :: Graph v -&gt; Int
+<span class="lineno">   48 </span><span class="decl"><span class="istickedoff">order = HM.size . unHashMap</span></span>
+<span class="lineno">   49 </span>
+<span class="lineno">   50 </span>instance (Q.Arbitrary v) =&gt; Q.Arbitrary (Node v) where
+<span class="lineno">   51 </span>  <span class="decl"><span class="istickedoff">arbitrary = do</span>
+<span class="lineno">   52 </span><span class="spaces">    </span><span class="istickedoff">int &lt;- H.hash &lt;$&gt; Q.vectorOf 10 (Q.arbitrary :: Q.Gen Char)</span>
+<span class="lineno">   53 </span><span class="spaces">    </span><span class="istickedoff">val &lt;- <span class="nottickedoff">Q.arbitrary :: Q.Gen v</span></span>
+<span class="lineno">   54 </span><span class="spaces">    </span><span class="istickedoff">return (NodeT int <span class="nottickedoff">val</span>)</span></span>
 
 </pre>
 </body>
