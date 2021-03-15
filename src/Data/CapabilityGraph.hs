@@ -6,11 +6,13 @@ where
 import Data.CapabilityGraph.Types
   ( DirectedGraph,
     Graph,
-    KeyedByInt,
+    Node,
     UndirectedGraph,
     empty,
     emptyDGraph,
     emptyUGraph,
+    isElement,
+    nodes,
     order,
-    wrap,
+    upsert,
   )

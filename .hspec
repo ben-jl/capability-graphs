@@ -1,4 +1,4 @@
 --color
 --rerun-all-on-success
 --fail-fast
--a 500
+-a 50000

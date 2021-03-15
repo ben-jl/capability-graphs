@@ -11,12 +11,10 @@ graphTestSpec = do
   prop_orderOfAnEmptyGraphAlwaysZero
   prop_orderOfEmptyDGraphAlwaysZero
   prop_orderOfEmptyUGraphAlwaysZero
-
---   prop_nodesByValueAfterInsertGTOne
---   prop_orderOfEmptyDGraphAlwaysZero
---   prop_orderOfEmptyUGraphAlwaysZero
---   prop_isElementAfterInsertAlwaysTrue
---   prop_orderAfterInsertDiffersByAtMostOne
+  prop_isElementAfterEmptyGraphAlwaysFalse
+  prop_isElementAfterEmptyDGraphAlwaysFalse
+  prop_isElementAfterUpsertEmptyAlwaysTrue
+  prop_orderOfGraphEqualsLengthOfnodes
 
 prop_orderOfAnEmptyGraphAlwaysZero :: S.Spec
 prop_orderOfAnEmptyGraphAlwaysZero =
@@ -33,17 +31,32 @@ prop_orderOfEmptyUGraphAlwaysZero =
   SQC.prop "order over emptyUGraph always zero" $ do
     \(_ :: Int) -> order (emptyUGraph :: UndirectedGraph Int) == 0
 
--- prop_isElementAfterInsertAlwaysTrue :: S.Spec
--- prop_isElementAfterInsertAlwaysTrue =
---   SQC.prop "isElement over insert always true" $ do
---     \g n ->
---       let (node, graph) = insert (g :: CGraph T.Text) n
---        in isElement graph node
+prop_isElementAfterEmptyGraphAlwaysFalse :: S.Spec
+prop_isElementAfterEmptyGraphAlwaysFalse =
+  SQC.prop "isElement over empty always false" $ do
+    \(n :: Node Int) -> not (isElement empty n)
 
--- prop_orderAfterInsertDiffersByAtMostOne :: S.Spec
--- prop_orderAfterInsertDiffersByAtMostOne =
---   SQC.prop "order over insert differs from before insert by at most one" $ do
---     \g n ->
---       let before = order (g :: CGraph T.Text)
---           after = order (snd (insert g n))
---        in abs (before - after) <= 1
+prop_isElementAfterEmptyDGraphAlwaysFalse :: S.Spec
+prop_isElementAfterEmptyDGraphAlwaysFalse =
+  SQC.prop "isElement over empty digraph always false" $ do
+    \(n :: Node Int) -> not (isElement emptyDGraph n)
+
+prop_isElementAfterEmptyUGraphAlwaysFalse :: S.Spec
+prop_isElementAfterEmptyUGraphAlwaysFalse =
+  SQC.prop "isElement over empty undirected graph always false" $ do
+    \(n :: Node Int) -> not (isElement emptyUGraph n)
+
+prop_isElementAfterUpsertEmptyAlwaysTrue :: S.Spec
+prop_isElementAfterUpsertEmptyAlwaysTrue =
+  SQC.prop "isElement over upsert . empty always true" $ do
+    \(n :: Node Int) -> isElement (upsert empty n) n
+
+prop_isElementAfterUpsertAlwaysTrue :: S.Spec
+prop_isElementAfterUpsertAlwaysTrue =
+  SQC.prop "isElement ver upsert always true" $ do
+    \(n :: Node Int) (g :: Graph Int) -> isElement (upsert g n)
+
+prop_orderOfGraphEqualsLengthOfnodes :: S.Spec
+prop_orderOfGraphEqualsLengthOfnodes =
+  SQC.prop "order of graph equals length of its node list" $ do
+    \(g :: Graph Int) -> order g == length (nodes g)
