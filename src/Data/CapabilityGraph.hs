@@ -9,9 +9,9 @@ import Data.CapabilityGraph.Types
     adjacent,
     createEdge,
     empty,
-    fromKeyed,
     insert,
     isElement,
     order,
-    wrapContext,
+    withHashFunction,
+    wrapNode,
   )

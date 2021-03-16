@@ -5,16 +5,17 @@ module Data.CapabilityGraph.Types
     order,
     isElement,
     insert,
-    fromKeyed,
-    wrapContext,
+    wrapNode,
     createEdge,
     adjacent,
+    withHashFunction,
   )
 where
 
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import qualified Data.Hashable as H
+import qualified Data.List as L
 import qualified Test.QuickCheck as Q
 
 -- | The primary graph structure, most likely will only be interacted w/ wrapped in a more featureful level
@@ -52,14 +53,16 @@ insert g@(GraphT hm) n@(NodeT k _)
   | HM.member k hm = g
   | otherwise = GraphT (HM.insert k (n, HS.empty) hm)
 
+-- | Create a (directed) edge from the first node to the second one, adding one or both nodes if necessary
 createEdge :: Graph v -> Node v -> Node v -> Graph v
 createEdge g v1 v2 =
   case (HM.lookup (key v1) (unHashMap g), HM.lookup (key v2) (unHashMap g)) of
-    (Just x, Just y) -> GraphT (HM.update (\z -> Just (fst z, (snd z) <> HS.singleton (key (fst y)))) (key (fst x)) (unHashMap g))
-    (Just x, Nothing) -> GraphT (HM.update (\z -> Just (fst x, (snd z) <> HS.singleton (key v1))) (key (fst x)) (unHashMap g))
+    (Just x, Just y) -> GraphT (HM.update (\z -> Just (fst z, (snd z) `HS.union` HS.singleton (key (fst y)))) (key (fst x)) (unHashMap g))
+    (Just x, Nothing) -> GraphT (HM.update (\z -> Just (fst x, (snd z) `HS.union` HS.singleton (key v2))) (key (fst x)) (HM.insert (key v2) (v2, HS.empty) (unHashMap g)))
     (Nothing, Just y) -> GraphT (HM.insert (key v1) (v1, HS.singleton (key (fst y))) (unHashMap g))
-    (Nothing, Nothing) -> GraphT ((HM.insert (key v2) (v2, HS.empty)) (unHashMap g) <> HM.insert (key v1) (v2, HS.singleton (key v1)) (unHashMap g))
+    (Nothing, Nothing) -> GraphT (HM.insert (key v1) (v1, HS.singleton (key v2)) (HM.insert (key v2) (v2, HS.empty) (unHashMap g)))
 
+-- | Return true if the first node is a child of the second
 adjacent :: Graph v -> Node v -> Node v -> Bool
 adjacent g v1 v2 = case (HM.lookup (key v1) (unHashMap g), HM.lookup (key v2) (unHashMap g)) of
   (Just x, Just y) -> HS.member (key (fst y)) (snd x)
@@ -70,20 +73,24 @@ order :: Graph v -> Int
 order = HM.size . unHashMap
 
 -- | Generate a unique hash (w.r.t. a specific graph at an instant) for a value.
-wrapContext :: Graph v -> v -> Node v
-wrapContext graph v =
-  let currHashes = map (key . fst) (HM.elems (unHashMap graph))
-      nextHash = case currHashes of
-        [] -> 1
-        hs -> 1 + maximum hs
-   in NodeT nextHash v
+wrapNode :: H.Hashable h => (v -> h) -> v -> Node v
+wrapNode f v = NodeT (H.hash (f v)) v
 
--- Given a list of tuples representing a mapping from value -> parent values (w/ the ints the values' keys), return a graph containg the same information
-fromKeyed :: [((Int, v), [(Int, v)])] -> Graph v
-fromKeyed keyed = GraphT (HM.fromList $ [(fst k1, (NodeT (fst k1) (snd k1), HS.fromList (map fst v))) | (k1, v) <- keyed] ++ [(fst k1, (NodeT (fst k1) (snd k1), HS.empty)) | k1 <- concatMap snd keyed])
+-- | Given an adjacency list and a hash function, return a graph containing the same information
+withHashFunction :: H.Hashable h => (v -> h) -> [(v, [v])] -> Graph v
+withHashFunction f ls =
+  let mapped = map (\x -> ((H.hash (f (fst x)), fst x), map (\y -> (H.hash (f y), y)) (snd x))) ls
+      fromKeyed keyed = GraphT (HM.fromList $ [(fst k1, (NodeT (fst k1) (snd k1), HS.fromList (map fst v))) | (k1, v) <- keyed] ++ [(fst k1, (NodeT (fst k1) (snd k1), HS.empty)) | k1 <- concatMap snd keyed])
+   in fromKeyed mapped
 
 instance (Q.Arbitrary v) => Q.Arbitrary (Node v) where
   arbitrary = do
     int <- H.hash <$> Q.vectorOf 10 (Q.arbitrary :: Q.Gen Char)
     val <- Q.arbitrary :: Q.Gen v
     return (NodeT int val)
+
+instance (Q.Arbitrary v, H.Hashable v, Eq v) => Q.Arbitrary (Graph v) where
+  arbitrary = do
+    ns <- Q.listOf (Q.arbitrary :: Q.Gen v)
+    let zipped = zip (L.nub [x | x <- ns]) (take (length (L.nub ns)) (L.subsequences [x | x <- ns]))
+    return (withHashFunction H.hash zipped)

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1b2d6f84035b5c8bc3474edcc2c1ec0d039b15ec9b238faccf422d80c9bd1633
+-- hash: 17225d85ec2c319d6fc64b2889d133f8ee1400e9e039470bd68e2a7fa0e5634e
 
 name:           capability-graphs
 version:        0.0.0.1
@@ -34,7 +34,7 @@ library
       src
       src/Data
   default-extensions: EmptyCase, LambdaCase, OverloadedStrings, BangPatterns, TupleSections , FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, ConstraintKinds , KindSignatures, ScopedTypeVariables, RankNTypes
-  ghc-options: -Wall -Wcompat
+  ghc-options: -Wall -Wcompat -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Werror=missing-home-modules -Widentities -Wredundant-constraints -Wcpp-undef
   build-depends:
       QuickCheck >=2.14.2 && <2.15
     , base >=4.7 && <5
@@ -54,7 +54,7 @@ test-suite capability-graphs-test
       test
       test/Test
   default-extensions: EmptyCase, LambdaCase, OverloadedStrings, BangPatterns, TupleSections , FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, ConstraintKinds , KindSignatures, ScopedTypeVariables, RankNTypes
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -Wcompat -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Werror=missing-home-modules -Widentities -Wredundant-constraints -Wcpp-undef
   build-depends:
       QuickCheck >=2.14.2 && <2.15
     , base >=4.7 && <5

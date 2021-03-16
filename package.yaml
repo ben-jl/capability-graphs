@@ -36,6 +36,14 @@ library:
   ghc-options:
     - -Wall
     - -Wcompat
+    - -Wincomplete-uni-patterns
+    - -Wincomplete-record-updates
+    - -Wpartial-fields
+    - -Werror=missing-home-modules
+    - -Widentities
+    - -Wredundant-constraints
+    - -Wcpp-undef
+    
 
 tests:
   capability-graphs-test:
@@ -48,6 +56,15 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -Wall
+    - -Wcompat
+    - -Wincomplete-uni-patterns
+    - -Wincomplete-record-updates
+    - -Wpartial-fields
+    - -Werror=missing-home-modules
+    - -Widentities
+    - -Wredundant-constraints
+    - -Wcpp-undef
     dependencies:
     - capability-graphs
    

@@ -14,6 +14,7 @@ graphTestSpec = do
   prop_isElementAfterInsertEmptyAlwaysTrue
   prop_orderOfGraphMadeFromKeyedSameAsNumberOfDistinctEls
   prop_orderOverInsertNewlyWrappedContextEqualsOne
+  prop_adjacentAfterCreateEdgeAlwaysTrue
 
 prop_orderOfAnEmptyGraphAlwaysZero :: S.Spec
 prop_orderOfAnEmptyGraphAlwaysZero =
@@ -33,18 +34,22 @@ prop_isElementAfterInsertEmptyAlwaysTrue =
 prop_orderOfGraphMadeFromKeyedSameAsNumberOfDistinctEls :: S.Spec
 prop_orderOfGraphMadeFromKeyedSameAsNumberOfDistinctEls =
   SQC.prop "Order of graph made from dijoint unions equals total number of elements in list" $ do
-    \(ns :: [Int]) -> let zipped = zip (L.nub [(x, x) | x <- ns]) (take (length (L.nub ns)) (L.subsequences [(x, x) | x <- ns])) in order (fromKeyed zipped) == length (L.nub ns)
+    \(ns :: [Int]) ->
+      let zipped = zip (L.nub [x | x <- ns]) (take (length (L.nub ns)) (L.subsequences [x | x <- ns]))
+       in order (withHashFunction id zipped) == length (L.nub ns)
 
 prop_orderOverInsertNewlyWrappedContextEqualsOne :: S.Spec
 prop_orderOverInsertNewlyWrappedContextEqualsOne =
   SQC.prop "Order of a graph after inserting element differs by exactly 1 from the original value" $ do
     \(ns :: [Int]) (n :: Int) ->
-      let zipped = zip (L.nub [(x, x) | x <- ns]) (take (length (L.nub ns)) (L.subsequences [(x, x) | x <- ns]))
-          graph = fromKeyed zipped
-       in abs (order graph - order (insert graph (wrapContext graph n))) == 1
+      let zipped = zip (L.nub [x | x <- ns]) (take (length (L.nub ns)) (L.subsequences [x | x <- ns]))
+          graph = withHashFunction id zipped
+       in abs (order graph - order (insert graph (wrapNode (\x -> (1 + maximum (x : ns))) n))) == 1
 
--- TODO next
--- prop_adjacentAfterCreateEdgeAlwaysTrue :: S.Spec
--- prop_adjacentAfterCreateEdgeAlwaysTrue =
---   SQC.prop "Adjacent after create edge always true" $ do
---     \(n1 :: Int) (n2 :: Int) -> adjacent (createEdge )
+prop_adjacentAfterCreateEdgeAlwaysTrue :: S.Spec
+prop_adjacentAfterCreateEdgeAlwaysTrue =
+  SQC.prop "Adjacent after create edge always true" $ do
+    \(n1 :: Int) (n2 :: Int) (g :: Graph Int) ->
+      let wrapped1 = wrapNode id n1
+          wrapped2 = wrapNode id n2
+       in adjacent (createEdge g wrapped1 wrapped2) wrapped1 wrapped2
