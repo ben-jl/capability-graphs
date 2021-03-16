@@ -9,9 +9,11 @@ module Data.CapabilityGraph.Types
     createEdge,
     adjacent,
     withHashFunction,
+    leastCommonAncestor,
   )
 where
 
+import Control.Monad (msum)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import qualified Data.Hashable as H
@@ -38,6 +40,9 @@ instance (Show v) => Show (Node v) where
 
 instance (Show v) => Show (Graph v) where
   show g = "GraphT Directed { unHashMap = " ++ show (unHashMap g) ++ " }"
+
+instance Eq v => Eq (Node v) where
+  (NodeT k1 v1) == (NodeT k2 v2) = k1 == k2 && v1 == v2
 
 -- | The empty graph
 empty :: Graph v
@@ -79,9 +84,27 @@ wrapNode f v = NodeT (H.hash (f v)) v
 -- | Given an adjacency list and a hash function, return a graph containing the same information
 withHashFunction :: H.Hashable h => (v -> h) -> [(v, [v])] -> Graph v
 withHashFunction f ls =
-  let mapped = map (\x -> ((H.hash (f (fst x)), fst x), map (\y -> (H.hash (f y), y)) (snd x))) ls
-      fromKeyed keyed = GraphT (HM.fromList $ [(fst k1, (NodeT (fst k1) (snd k1), HS.fromList (map fst v))) | (k1, v) <- keyed] ++ [(fst k1, (NodeT (fst k1) (snd k1), HS.empty)) | k1 <- concatMap snd keyed])
-   in fromKeyed mapped
+  let withHashFunction' _ [] acc = acc
+      withHashFunction' h (c : cs) acc = case c of
+        (x, []) -> withHashFunction' h cs (insert acc (wrapNode h x))
+        (x, y : ys) -> withHashFunction' h ((x, ys) : cs) (createEdge acc (wrapNode h x) (wrapNode h y))
+   in withHashFunction' f ls empty
+
+leastCommonAncestor :: Graph v -> Node v -> Node v -> Maybe (Node v)
+leastCommonAncestor g n1 n2 =
+  let leastCommonAncestor' acc (hm :: HM.HashMap Int (Node v, HS.HashSet Int)) (NodeT ck1 cv1) (NodeT ck2 cv2)
+        | ck1 == ck2 = fst <$> HM.lookup ck1 hm
+        | otherwise = case (HS.member ck1 acc, HS.member ck2 acc) of
+          (True, _) -> Just (NodeT ck1 cv1)
+          (_, True) -> Just (NodeT ck2 cv2)
+          _ -> case (HM.lookup ck1 hm, HM.lookup ck2 hm) of
+            (Just (_, c1s), Just (_, c2s)) ->
+              let nextacc = (acc <> HS.insert ck1 acc <> HS.insert ck2 acc)
+               in msum [leastCommonAncestor' nextacc hm (fst (hm HM.! c1next)) (fst (hm HM.! c2next)) | c1next <- HS.toList c1s, c2next <- HS.toList c2s]
+            (Just (_, c1s), Nothing) -> msum [leastCommonAncestor' (acc <> HS.insert ck1 acc <> HS.insert ck2 acc) hm (NodeT ck1 cv1) (fst (hm HM.! c1next)) | c1next <- HS.toList c1s]
+            (Nothing, Just (_, c2s)) -> msum [leastCommonAncestor' (acc <> HS.insert ck1 acc <> HS.insert ck2 acc) hm (NodeT ck1 cv1) (fst (hm HM.! c2next)) | c2next <- HS.toList c2s]
+            (Nothing, Nothing) -> Nothing
+   in leastCommonAncestor' HS.empty (unHashMap g) n1 n2
 
 instance (Q.Arbitrary v) => Q.Arbitrary (Node v) where
   arbitrary = do

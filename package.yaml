@@ -48,7 +48,7 @@ library:
 tests:
   capability-graphs-test:
     main:                Spec.hs
-    other-modules: Test.GraphTests
+    other-modules: Test.GraphTests Test.GraphSpec
     source-dirs:
     - test
     - test/Test

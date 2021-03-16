@@ -11,6 +11,7 @@ import Data.CapabilityGraph.Types
     empty,
     insert,
     isElement,
+    leastCommonAncestor,
     order,
     withHashFunction,
     wrapNode,

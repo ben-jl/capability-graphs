@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 17225d85ec2c319d6fc64b2889d133f8ee1400e9e039470bd68e2a7fa0e5634e
+-- hash: 846acca1d30c655bc5ef5b2ff57ec05139722dd63228d53c0b9f3a542cbd4564
 
 name:           capability-graphs
 version:        0.0.0.1
@@ -49,7 +49,7 @@ test-suite capability-graphs-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Test.GraphTests
+      Test.GraphTests Test.GraphSpec
   hs-source-dirs:
       test
       test/Test
