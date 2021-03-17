@@ -15,12 +15,11 @@ module Data.CapabilityGraph.Types
   )
 where
 
-import Control.Monad (msum)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import qualified Data.Hashable as H
 import qualified Data.List as L
-import Data.Maybe (fromMaybe, isNothing)
+import Data.Maybe (fromMaybe)
 import qualified Test.QuickCheck as Q
 
 -- | The primary graph structure, most likely will only be interacted w/ wrapped in a more featureful level
@@ -33,6 +32,7 @@ newtype Graph v = GraphT
 instance Functor Graph where
   f `fmap` (GraphT hm) = GraphT $ HM.map (\(NodeT k n, hs) -> (NodeT k (f n), hs)) hm
 
+-- | the base node object used by the library. Ideally, clients will always interact w/ this wrapped
 data Node v = NodeT {key :: Int, unNode :: v}
 
 instance Functor Node where
@@ -76,9 +76,6 @@ adjacent g v1 v2 = case (HM.lookup (key v1) (unHashMap g), HM.lookup (key v2) (u
   (Just x, Just y) -> HS.member (key (fst y)) (snd x)
   _ -> False
 
-parents :: Graph v -> Node v -> [Node v]
-parents g (NodeT k1 _) = fromMaybe [] (sequence [fst <$> HM.lookup nxt (unHashMap g) | nxt <- HS.toList (HM.findWithDefault HS.empty k1 (HM.map snd (unHashMap g)))])
-
 -- | Determines the total number of elements in a graph
 order :: Graph v -> Int
 order = HM.size . unHashMap
@@ -96,11 +93,20 @@ withHashFunction f ls =
         (x, y : ys) -> withHashFunction' h ((x, ys) : cs) (createEdge acc (wrapNode h x) (wrapNode h y))
    in withHashFunction' f ls empty
 
+-- | given two nodes, returns the node that's reachable in the fewest steps (or Nothing if the nodes are not related)
 leastCommonAncestor :: Eq v => Graph v -> Node v -> Node v -> Maybe (Node v)
 leastCommonAncestor g n1 n2 =
   case L.intersectBy (\x1 x2 -> snd x1 == snd x2) (allAncestors 0 g n1) (allAncestors 1 g n2) of
     [] -> Nothing
     as -> Just . snd . head $ L.sortOn fst as
+
+-- | return a list of pairs representing all the reachable ancestors of a node and the number of steps taken to get there
+allAncestors :: Int -> Graph v -> Node v -> [(Int, Node v)]
+allAncestors acc g n = (acc, n) : (parents g n >>= \p -> allAncestors (acc + 1) g p)
+
+-- | return a list of all direct parents of a given node
+parents :: Graph v -> Node v -> [Node v]
+parents g (NodeT k1 _) = fromMaybe [] (sequence [fst <$> HM.lookup nxt (unHashMap g) | nxt <- HS.toList (HM.findWithDefault HS.empty k1 (HM.map snd (unHashMap g)))])
 
 instance (Q.Arbitrary v) => Q.Arbitrary (Node v) where
   arbitrary = do
@@ -113,6 +119,3 @@ instance (Q.Arbitrary v, H.Hashable v, Eq v) => Q.Arbitrary (Graph v) where
     ns <- Q.listOf (Q.arbitrary :: Q.Gen v)
     let zipped = zip (L.nub [x | x <- ns]) (take (length (L.nub ns)) (L.subsequences [x | x <- ns]))
     return (withHashFunction H.hash zipped)
-
-allAncestors :: Int -> Graph v -> Node v -> [(Int, Node v)]
-allAncestors acc g n = (acc, n) : (parents g n >>= \p -> allAncestors (acc + 1) g p)

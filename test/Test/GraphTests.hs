@@ -2,7 +2,7 @@ module Test.GraphTests where
 
 import Data.CapabilityGraph
 import qualified Data.List as L (nub, subsequences)
-import qualified Data.Text as T
+import Data.Maybe (isNothing)
 import qualified Test.Hspec as S
 import qualified Test.Hspec.QuickCheck as SQC
 import Test.QuickCheck.Instances.Text ()
@@ -15,6 +15,10 @@ graphTestSpec = do
   prop_orderOfGraphMadeFromKeyedSameAsNumberOfDistinctEls
   prop_orderOverInsertNewlyWrappedContextEqualsOne
   prop_adjacentAfterCreateEdgeAlwaysTrue
+  prop_adjacentAfterEmptyAlwaysFalse
+  prop_parentsAfterEmptyAlwaysEmpty
+  prop_allAncestorsAfterEmptyAlwaysJustNode
+  prop_leastCommonAncestorOfEmptyAlwaysNothing
 
 prop_orderOfAnEmptyGraphAlwaysZero :: S.Spec
 prop_orderOfAnEmptyGraphAlwaysZero =
@@ -53,3 +57,23 @@ prop_adjacentAfterCreateEdgeAlwaysTrue =
       let wrapped1 = wrapNode id n1
           wrapped2 = wrapNode id n2
        in adjacent (createEdge g wrapped1 wrapped2) wrapped1 wrapped2
+
+prop_adjacentAfterEmptyAlwaysFalse :: S.Spec
+prop_adjacentAfterEmptyAlwaysFalse =
+  SQC.prop "Adjacent after empty always true" $ do
+    \(n1 :: Int) (n2 :: Int) -> not (adjacent empty (wrapNode id n1) (wrapNode id n2))
+
+prop_parentsAfterEmptyAlwaysEmpty :: S.Spec
+prop_parentsAfterEmptyAlwaysEmpty =
+  SQC.prop "Parents after empty always empty" $ do
+    \(n1 :: Int) -> null (parents empty (wrapNode id n1))
+
+prop_allAncestorsAfterEmptyAlwaysJustNode :: S.Spec
+prop_allAncestorsAfterEmptyAlwaysJustNode =
+  SQC.prop "All ancestors after empty always contains just node" $ do
+    \(n1 :: Int) -> length (allAncestors 0 empty (wrapNode id n1)) == 1
+
+prop_leastCommonAncestorOfEmptyAlwaysNothing :: S.Spec
+prop_leastCommonAncestorOfEmptyAlwaysNothing =
+  SQC.prop "Least common ancestor of empty always Nothing" $ do
+    \(n1 :: Node Int) (n2 :: Node Int) -> isNothing (leastCommonAncestor empty n1 n2)
