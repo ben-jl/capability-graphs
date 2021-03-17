@@ -10,6 +10,8 @@ module Data.CapabilityGraph.Types
     adjacent,
     withHashFunction,
     leastCommonAncestor,
+    parents,
+    allAncestors,
   )
 where
 
@@ -18,6 +20,7 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import qualified Data.Hashable as H
 import qualified Data.List as L
+import Data.Maybe (fromMaybe, isNothing)
 import qualified Test.QuickCheck as Q
 
 -- | The primary graph structure, most likely will only be interacted w/ wrapped in a more featureful level
@@ -73,6 +76,9 @@ adjacent g v1 v2 = case (HM.lookup (key v1) (unHashMap g), HM.lookup (key v2) (u
   (Just x, Just y) -> HS.member (key (fst y)) (snd x)
   _ -> False
 
+parents :: Graph v -> Node v -> [Node v]
+parents g (NodeT k1 _) = fromMaybe [] (sequence [fst <$> HM.lookup nxt (unHashMap g) | nxt <- HS.toList (HM.findWithDefault HS.empty k1 (HM.map snd (unHashMap g)))])
+
 -- | Determines the total number of elements in a graph
 order :: Graph v -> Int
 order = HM.size . unHashMap
@@ -90,21 +96,11 @@ withHashFunction f ls =
         (x, y : ys) -> withHashFunction' h ((x, ys) : cs) (createEdge acc (wrapNode h x) (wrapNode h y))
    in withHashFunction' f ls empty
 
-leastCommonAncestor :: Graph v -> Node v -> Node v -> Maybe (Node v)
+leastCommonAncestor :: Eq v => Graph v -> Node v -> Node v -> Maybe (Node v)
 leastCommonAncestor g n1 n2 =
-  let leastCommonAncestor' acc (hm :: HM.HashMap Int (Node v, HS.HashSet Int)) (NodeT ck1 cv1) (NodeT ck2 cv2)
-        | ck1 == ck2 = fst <$> HM.lookup ck1 hm
-        | otherwise = case (HS.member ck1 acc, HS.member ck2 acc) of
-          (True, _) -> Just (NodeT ck1 cv1)
-          (_, True) -> Just (NodeT ck2 cv2)
-          _ -> case (HM.lookup ck1 hm, HM.lookup ck2 hm) of
-            (Just (_, c1s), Just (_, c2s)) ->
-              let nextacc = (acc <> HS.insert ck1 acc <> HS.insert ck2 acc)
-               in msum [leastCommonAncestor' nextacc hm (fst (hm HM.! c1next)) (fst (hm HM.! c2next)) | c1next <- HS.toList c1s, c2next <- HS.toList c2s]
-            (Just (_, c1s), Nothing) -> msum [leastCommonAncestor' (acc <> HS.insert ck1 acc <> HS.insert ck2 acc) hm (NodeT ck1 cv1) (fst (hm HM.! c1next)) | c1next <- HS.toList c1s]
-            (Nothing, Just (_, c2s)) -> msum [leastCommonAncestor' (acc <> HS.insert ck1 acc <> HS.insert ck2 acc) hm (NodeT ck1 cv1) (fst (hm HM.! c2next)) | c2next <- HS.toList c2s]
-            (Nothing, Nothing) -> Nothing
-   in leastCommonAncestor' HS.empty (unHashMap g) n1 n2
+  case L.intersectBy (\x1 x2 -> snd x1 == snd x2) (allAncestors 0 g n1) (allAncestors 1 g n2) of
+    [] -> Nothing
+    as -> Just . snd . head $ L.sortOn fst as
 
 instance (Q.Arbitrary v) => Q.Arbitrary (Node v) where
   arbitrary = do
@@ -117,3 +113,6 @@ instance (Q.Arbitrary v, H.Hashable v, Eq v) => Q.Arbitrary (Graph v) where
     ns <- Q.listOf (Q.arbitrary :: Q.Gen v)
     let zipped = zip (L.nub [x | x <- ns]) (take (length (L.nub ns)) (L.subsequences [x | x <- ns]))
     return (withHashFunction H.hash zipped)
+
+allAncestors :: Int -> Graph v -> Node v -> [(Int, Node v)]
+allAncestors acc g n = (acc, n) : (parents g n >>= \p -> allAncestors (acc + 1) g p)

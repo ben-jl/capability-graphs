@@ -1,0 +1,141 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>module Data.CapabilityGraph.Types
+<span class="lineno">    2 </span>  ( Graph,
+<span class="lineno">    3 </span>    Node,
+<span class="lineno">    4 </span>    empty,
+<span class="lineno">    5 </span>    order,
+<span class="lineno">    6 </span>    isElement,
+<span class="lineno">    7 </span>    insert,
+<span class="lineno">    8 </span>    wrapNode,
+<span class="lineno">    9 </span>    createEdge,
+<span class="lineno">   10 </span>    adjacent,
+<span class="lineno">   11 </span>    withHashFunction,
+<span class="lineno">   12 </span>    leastCommonAncestor,
+<span class="lineno">   13 </span>    parents,
+<span class="lineno">   14 </span>    allAncestors,
+<span class="lineno">   15 </span>  )
+<span class="lineno">   16 </span>where
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>import Control.Monad (msum)
+<span class="lineno">   19 </span>import qualified Data.HashMap.Strict as HM
+<span class="lineno">   20 </span>import qualified Data.HashSet as HS
+<span class="lineno">   21 </span>import qualified Data.Hashable as H
+<span class="lineno">   22 </span>import qualified Data.List as L
+<span class="lineno">   23 </span>import Data.Maybe (fromMaybe, isNothing)
+<span class="lineno">   24 </span>import qualified Test.QuickCheck as Q
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>-- | The primary graph structure, most likely will only be interacted w/ wrapped in a more featureful level
+<span class="lineno">   27 </span>newtype Graph v = GraphT
+<span class="lineno">   28 </span>  { -- | underlying data structure, representing the graph as a hashmap from an INT -&gt; a tuple containing a node (value)
+<span class="lineno">   29 </span>    -- | a hashset of ints (w/ the ints being the keys of the nodes parent)
+<span class="lineno">   30 </span>    <span class="istickedoff"><span class="decl"><span class="istickedoff">unHashMap</span></span></span> :: HM.HashMap Int (Node v, HS.HashSet Int)
+<span class="lineno">   31 </span>  }
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>instance Functor Graph where
+<span class="lineno">   34 </span>  <span class="decl"><span class="nottickedoff">f `fmap` (GraphT hm) = GraphT $ HM.map (\(NodeT k n, hs) -&gt; (NodeT k (f n), hs)) hm</span></span>
+<span class="lineno">   35 </span>
+<span class="lineno">   36 </span>data Node v = NodeT {<span class="istickedoff"><span class="decl"><span class="istickedoff">key</span></span></span> :: Int, <span class="nottickedoff"><span class="decl"><span class="nottickedoff">unNode</span></span></span> :: v}
+<span class="lineno">   37 </span>
+<span class="lineno">   38 </span>instance Functor Node where
+<span class="lineno">   39 </span>  <span class="decl"><span class="nottickedoff">f `fmap` n = NodeT {key = key n, unNode = f (unNode n)}</span></span>
+<span class="lineno">   40 </span>
+<span class="lineno">   41 </span>instance (Show v) =&gt; Show (Node v) where
+<span class="lineno">   42 </span>  <span class="decl"><span class="nottickedoff">show (NodeT h v) = &quot;NodeT { &quot; ++ show h ++ &quot; &quot; ++ show v ++ &quot; }&quot;</span></span>
+<span class="lineno">   43 </span>
+<span class="lineno">   44 </span>instance (Show v) =&gt; Show (Graph v) where
+<span class="lineno">   45 </span>  <span class="decl"><span class="nottickedoff">show g = &quot;GraphT Directed { unHashMap = &quot; ++ show (unHashMap g) ++ &quot; }&quot;</span></span>
+<span class="lineno">   46 </span>
+<span class="lineno">   47 </span>instance Eq v =&gt; Eq (Node v) where
+<span class="lineno">   48 </span>  <span class="decl"><span class="istickedoff">(NodeT k1 v1) == (NodeT k2 v2) = k1 == k2 &amp;&amp; v1 == v2</span></span>
+<span class="lineno">   49 </span>
+<span class="lineno">   50 </span>-- | The empty graph
+<span class="lineno">   51 </span>empty :: Graph v
+<span class="lineno">   52 </span><span class="decl"><span class="istickedoff">empty = GraphT HM.empty</span></span>
+<span class="lineno">   53 </span>
+<span class="lineno">   54 </span>-- | Returns true if a node is an element of a given graph
+<span class="lineno">   55 </span>isElement :: Graph v -&gt; Node v -&gt; Bool
+<span class="lineno">   56 </span><span class="decl"><span class="istickedoff">isElement g n = HM.member (key n) (unHashMap g)</span>
+<span class="lineno">   57 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   58 </span><span class="spaces"></span><span class="istickedoff">-- | Given a graph and node, update node if already present, otherwise insert, leaving relationships unchanged</span></span>
+<span class="lineno">   59 </span>insert :: Graph v -&gt; Node v -&gt; Graph v
+<span class="lineno">   60 </span><span class="decl"><span class="istickedoff">insert g@(GraphT hm) n@(NodeT k _)</span>
+<span class="lineno">   61 </span><span class="spaces">  </span><span class="istickedoff">| HM.member k hm = g</span>
+<span class="lineno">   62 </span><span class="spaces">  </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> = GraphT (HM.insert k (n, HS.empty) hm)</span>
+<span class="lineno">   63 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   64 </span><span class="spaces"></span><span class="istickedoff">-- | Create a (directed) edge from the first node to the second one, adding one or both nodes if necessary</span></span>
+<span class="lineno">   65 </span>createEdge :: Graph v -&gt; Node v -&gt; Node v -&gt; Graph v
+<span class="lineno">   66 </span><span class="decl"><span class="istickedoff">createEdge g v1 v2 =</span>
+<span class="lineno">   67 </span><span class="spaces">  </span><span class="istickedoff">case (HM.lookup (key v1) (unHashMap g), HM.lookup (key v2) (unHashMap g)) of</span>
+<span class="lineno">   68 </span><span class="spaces">    </span><span class="istickedoff">(Just x, Just y) -&gt; GraphT (HM.update (\z -&gt; Just (fst z, (snd z) `HS.union` HS.singleton (key (fst y)))) (key (fst x)) (unHashMap g))</span>
+<span class="lineno">   69 </span><span class="spaces">    </span><span class="istickedoff">(Just x, Nothing) -&gt; GraphT (HM.update (\z -&gt; Just (fst x, (snd z) `HS.union` HS.singleton (key v2))) (key (fst x)) (HM.insert (key v2) (v2, HS.empty) (unHashMap g)))</span>
+<span class="lineno">   70 </span><span class="spaces">    </span><span class="istickedoff">(Nothing, Just y) -&gt; GraphT (HM.insert (key v1) (v1, HS.singleton (key (fst y))) (unHashMap g))</span>
+<span class="lineno">   71 </span><span class="spaces">    </span><span class="istickedoff">(Nothing, Nothing) -&gt; GraphT (HM.insert (key v1) (v1, HS.singleton (key v2)) (HM.insert (key v2) (v2, HS.empty) (unHashMap g)))</span>
+<span class="lineno">   72 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   73 </span><span class="spaces"></span><span class="istickedoff">-- | Return true if the first node is a child of the second</span></span>
+<span class="lineno">   74 </span>adjacent :: Graph v -&gt; Node v -&gt; Node v -&gt; Bool
+<span class="lineno">   75 </span><span class="decl"><span class="istickedoff">adjacent g v1 v2 = case (HM.lookup (key v1) (unHashMap g), HM.lookup (key v2) (unHashMap g)) of</span>
+<span class="lineno">   76 </span><span class="spaces">  </span><span class="istickedoff">(Just x, Just y) -&gt; HS.member (key (fst y)) (snd x)</span>
+<span class="lineno">   77 </span><span class="spaces">  </span><span class="istickedoff">_ -&gt; <span class="nottickedoff">False</span></span></span>
+<span class="lineno">   78 </span>
+<span class="lineno">   79 </span>parents :: Graph v -&gt; Node v -&gt; [Node v]
+<span class="lineno">   80 </span><span class="decl"><span class="istickedoff">parents g (NodeT k1 _) = fromMaybe <span class="nottickedoff">[]</span> (sequence [fst &lt;$&gt; HM.lookup nxt (unHashMap g) | nxt &lt;- HS.toList (HM.findWithDefault <span class="nottickedoff">HS.empty</span> k1 (HM.map snd (unHashMap g)))])</span>
+<span class="lineno">   81 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   82 </span><span class="spaces"></span><span class="istickedoff">-- | Determines the total number of elements in a graph</span></span>
+<span class="lineno">   83 </span>order :: Graph v -&gt; Int
+<span class="lineno">   84 </span><span class="decl"><span class="istickedoff">order = HM.size . unHashMap</span></span>
+<span class="lineno">   85 </span>
+<span class="lineno">   86 </span>-- | Generate a unique hash (w.r.t. a specific graph at an instant) for a value.
+<span class="lineno">   87 </span>wrapNode :: H.Hashable h =&gt; (v -&gt; h) -&gt; v -&gt; Node v
+<span class="lineno">   88 </span><span class="decl"><span class="istickedoff">wrapNode f v = NodeT (H.hash (f v)) v</span>
+<span class="lineno">   89 </span><span class="spaces"></span><span class="istickedoff"></span>
+<span class="lineno">   90 </span><span class="spaces"></span><span class="istickedoff">-- | Given an adjacency list and a hash function, return a graph containing the same information</span></span>
+<span class="lineno">   91 </span>withHashFunction :: H.Hashable h =&gt; (v -&gt; h) -&gt; [(v, [v])] -&gt; Graph v
+<span class="lineno">   92 </span><span class="decl"><span class="istickedoff">withHashFunction f ls =</span>
+<span class="lineno">   93 </span><span class="spaces">  </span><span class="istickedoff">let withHashFunction' _ [] acc = acc</span>
+<span class="lineno">   94 </span><span class="spaces">      </span><span class="istickedoff">withHashFunction' h (c : cs) acc = case c of</span>
+<span class="lineno">   95 </span><span class="spaces">        </span><span class="istickedoff">(x, []) -&gt; withHashFunction' h cs (insert acc (wrapNode h x))</span>
+<span class="lineno">   96 </span><span class="spaces">        </span><span class="istickedoff">(x, y : ys) -&gt; withHashFunction' h ((x, ys) : cs) (createEdge acc (wrapNode h x) (wrapNode h y))</span>
+<span class="lineno">   97 </span><span class="spaces">   </span><span class="istickedoff">in withHashFunction' f ls empty</span></span>
+<span class="lineno">   98 </span>
+<span class="lineno">   99 </span>leastCommonAncestor :: Eq v =&gt; Graph v -&gt; Node v -&gt; Node v -&gt; Maybe (Node v)
+<span class="lineno">  100 </span><span class="decl"><span class="istickedoff">leastCommonAncestor g n1 n2 =</span>
+<span class="lineno">  101 </span><span class="spaces">  </span><span class="istickedoff">case L.intersectBy (\x1 x2 -&gt; snd x1 == snd x2) (allAncestors 0 g n1) (allAncestors <span class="nottickedoff">1</span> g n2) of</span>
+<span class="lineno">  102 </span><span class="spaces">    </span><span class="istickedoff">[] -&gt; <span class="nottickedoff">Nothing</span></span>
+<span class="lineno">  103 </span><span class="spaces">    </span><span class="istickedoff">as -&gt; Just . snd . head $ L.sortOn fst as</span></span>
+<span class="lineno">  104 </span>
+<span class="lineno">  105 </span>instance (Q.Arbitrary v) =&gt; Q.Arbitrary (Node v) where
+<span class="lineno">  106 </span>  <span class="decl"><span class="istickedoff">arbitrary = do</span>
+<span class="lineno">  107 </span><span class="spaces">    </span><span class="istickedoff">int &lt;- H.hash &lt;$&gt; Q.vectorOf 10 (Q.arbitrary :: Q.Gen Char)</span>
+<span class="lineno">  108 </span><span class="spaces">    </span><span class="istickedoff">val &lt;- <span class="nottickedoff">Q.arbitrary :: Q.Gen v</span></span>
+<span class="lineno">  109 </span><span class="spaces">    </span><span class="istickedoff">return (NodeT int <span class="nottickedoff">val</span>)</span></span>
+<span class="lineno">  110 </span>
+<span class="lineno">  111 </span>instance (Q.Arbitrary v, H.Hashable v, Eq v) =&gt; Q.Arbitrary (Graph v) where
+<span class="lineno">  112 </span>  <span class="decl"><span class="istickedoff">arbitrary = do</span>
+<span class="lineno">  113 </span><span class="spaces">    </span><span class="istickedoff">ns &lt;- Q.listOf (Q.arbitrary :: Q.Gen v)</span>
+<span class="lineno">  114 </span><span class="spaces">    </span><span class="istickedoff">let zipped = zip (L.nub [x | x &lt;- ns]) (take (length (L.nub ns)) (L.subsequences [x | x &lt;- ns]))</span>
+<span class="lineno">  115 </span><span class="spaces">    </span><span class="istickedoff">return (withHashFunction H.hash zipped)</span></span>
+<span class="lineno">  116 </span>
+<span class="lineno">  117 </span>allAncestors :: Int -&gt; Graph v -&gt; Node v -&gt; [(Int, Node v)]
+<span class="lineno">  118 </span><span class="decl"><span class="istickedoff">allAncestors acc g n = (acc, n) : (parents g n &gt;&gt;= \p -&gt; allAncestors (acc + 1) g p)</span></span>
+
+</pre>
+</body>
+</html>

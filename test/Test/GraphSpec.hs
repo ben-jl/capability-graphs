@@ -46,5 +46,7 @@ basicBranchingHistorySpec =
           adjacent graph (wrapNode H.hash 4) (wrapNode H.hash 5)
         S.it "1 and 3 have least common ancestor 5" $ do
           leastCommonAncestor graph (wrapNode H.hash 1) (wrapNode H.hash 3) == Just (wrapNode H.hash 5)
-        S.it ("6 and 3 have least common ancestor 7" ++ show (leastCommonAncestor graph (wrapNode H.hash 6) (wrapNode H.hash (3 :: Int))) ++ show (Just (wrapNode H.hash (7 :: Int)))) $ do
-          adjacent graph (wrapNode H.hash 3) (wrapNode H.hash 4)
+        S.it "6 and 3 have least common ancestor 7" $ do
+          leastCommonAncestor graph (wrapNode H.hash 6) (wrapNode H.hash 3) == Just (wrapNode H.hash 7)
+        S.it "2 and 4 have least common ancestor 5" $ do
+          leastCommonAncestor graph (wrapNode H.hash 2) (wrapNode H.hash 4) == Just (wrapNode H.hash 5)
